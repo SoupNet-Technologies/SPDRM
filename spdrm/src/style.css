@@ -339,3 +339,61 @@ hr {
     border: 0px solid var(--borders);
     border-top: 1px solid var(--borders);
 }
+
+/* ---- recovered module styles (deployed spdrm.com snapshot) ---- */
+
+.label {
+    width: fit-content;
+    max-width: 90%;
+    background-color: var(--background);
+    padding: 0 3vmin;
+    border-radius: 3vmin 3vmin 0 0;
+    margin: 1vmin auto;
+    border: 1px solid var(--borders);
+}
+
+.label p {
+    margin: 0;
+    padding: 0;
+    color: var(--text2);
+}
+
+.card.fancy {
+    background-image: linear-gradient(45deg, var(--background2) 25%, transparent 25%, transparent 75%, var(--background2) 75%);
+    background-size: 10vmin 10vmin;
+    background-blend-mode: multiply;
+}
+
+.code-comment {
+    color: var(--secaccent);
+}
+
+.code-constant, .code-boolean {
+    color: var(--text2);
+}
+
+.code-variable, .code-function {
+    color: var(--text);
+}
+
+.code-color, .code-number {
+    color: var(--primaccent);
+}
+
+.carousel {
+    display: flex;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+}
+.image-div {
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+    position: relative;
+    width: 100%;
+}
+.carousel-image {
+    max-width: 100%;
+    height: auto;
+    display: block;
+}

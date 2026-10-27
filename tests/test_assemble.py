@@ -79,3 +79,41 @@ def test_write_output_backs_up_previous_build(build, tmp_path):
     build.write_output("<html>v2</html>", out)
     assert out.with_suffix(".html.bak").read_text() == "<html>v1</html>"
     assert out.read_text() == "<html>v2</html>"
+
+
+def test_gallery_route_generates_grid_with_zoom(build, base_data):
+    d = base_data()
+    d["routes"]["art"] = {
+        "type": "gallery", "title": "Art", "ads": False, "meta": ["", "", ""],
+        "rows": [[{"src": "a.png", "title": 'One "A"'}, {"src": "b.png", "title": "Two"}]],
+    }
+    html = assemble(build, d)
+    assert "zoomimg(col);" in html
+    assert '{src:"a.png",title:"One \\"A\\""}' in html
+    assert "main.offsetWidth/row.length" in html
+
+
+def test_minify_js_mangles_regex_literals_documented_limitation(build):
+    """Why modules ship verbatim: the minifier reads // inside /regex/ as a
+    comment start (a regex ending in an escaped slash puts its terminator
+    adjacent to it). The recovered highlight module hit exactly this and
+    node_check caught it. If this ever stops being true, modules could be
+    minified again."""
+    src = r"const c = /\/\/.*|\/\*[^]*?\*\//g;"  # trimmed from highlight.js
+    out = build.minify_js(src)
+    assert "//g" not in out  # the regex terminator got eaten as a "comment"
+
+
+def test_module_js_lands_between_tools_and_router(build, base_data):
+    d = base_data()
+    html = build.assemble_html(
+        d,
+        "/*UTILS*/", "/*ROUTER*/", "/*TOOLS*/",
+        build.minify_js(build.gen_site_js(d["site"])),
+        build.minify_js(build.gen_routes_js(d["routes"])),
+        build.minify_js(build.gen_nav_js(d["nav"])),
+        build.minify_js(build.gen_ads_js([])),
+        "body{}",
+        "/*MODULE*/",
+    )
+    assert html.index("/*TOOLS*/") < html.index("/*MODULE*/") < html.index("/*ROUTER*/")

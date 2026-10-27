@@ -73,7 +73,8 @@ budget, node syntax, markdown and prose style lint), and deployed. The demo live
 at [spdrm.jessy.boo](https://spdrm.jessy.boo).
 
 Roadmap: History API router, npm packaging (deferred, the files are copy-paste-able
-today), optional modules (synth, sudoku).
+today). The synth is already in as an opt-in module (`"modules": ["synth"]`), and
+the demo carries a gallery route, an iframe-routed sudoku, and the framework docs.
 
 ## License
 

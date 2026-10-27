@@ -71,6 +71,33 @@ def test_nav_child_slug_must_exist(build, base_data):
     assert "slug 'ghost' not found" in msgs
 
 
+def test_gallery_route_needs_title_and_rows(build, base_data):
+    msgs = " ".join(err(build, base_data(routes={"x": {"type": "gallery"}})))
+    assert "requires 'title'" in msgs
+    assert "requires 'rows'" in msgs
+
+
+def test_gallery_cells_need_src(build, base_data):
+    d = base_data()
+    d["routes"]["x"] = {
+        "type": "gallery", "title": "G", "meta": ["", "", ""],
+        "rows": [[{"title": "no src"}]],
+    }
+    msgs = " ".join(err(build, d))
+    assert "gallery row 0 cell 0 requires 'src'" in msgs
+
+
+def test_unknown_module_rejected(build, base_data):
+    msgs = " ".join(err(build, base_data(modules=["horse"])))
+    assert "unknown module 'horse'" in msgs
+
+
+def test_known_module_requires_file(build, base_data):
+    d = base_data(modules=["synth"])
+    # synth.js exists in this repo, so this validates
+    assert err(build, d) == []
+
+
 def test_layout_defaults_are_generic(build, base_data):
     d = base_data()
     build.validate(d)  # not the deepcopy helper — validate() mutates layout in place

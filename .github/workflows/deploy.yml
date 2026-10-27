@@ -23,6 +23,7 @@ jobs:
           mkdir -p dist
           cp index.html manifest.json sitemap.xml 403.html 404.html 500.html dist/
           cp -r assets dist/assets
+          cp -r sudoku dist/sudoku
       - uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}

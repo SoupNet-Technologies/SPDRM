@@ -15,6 +15,15 @@ SRC_ROUTER = BASE / "src" / "router.js"
 SRC_TOOLS = BASE / "src" / "tools.js"
 OUT_PATH = PROJECT_ROOT / "index.html"
 
+# optional modules: included in the bundle only when site_data.json lists them
+MODULE_FILES = {
+    "synth": "synth.js",
+    "cards": "cards.js",
+    "carousel": "carousel.js",
+    "highlight": "highlight.js",
+    "label": "label.js",
+}
+
 def die(msg):
     print(f"Error: {msg}", file=sys.stderr)
     sys.exit(1)
@@ -47,7 +56,7 @@ def validate(data):
             errors.append(f"route has invalid slug: {slug}")
             continue
         rtype = route.get("type")
-        if rtype not in ("content", "iframe", "404", "abyss", "interactive"):
+        if rtype not in ("content", "iframe", "404", "abyss", "interactive", "gallery"):
             errors.append(f"route '{slug}': invalid type '{rtype}'")
             continue
         if rtype == "content":
@@ -55,6 +64,17 @@ def validate(data):
                 errors.append(f"route '{slug}': content type requires 'title'")
             if "cards" not in route or not isinstance(route.get("cards"), list):
                 errors.append(f"route '{slug}': content type requires 'cards' array")
+        elif rtype == "gallery":
+            if not route.get("title"):
+                errors.append(f"route '{slug}': gallery type requires 'title'")
+            rows = route.get("rows")
+            if not isinstance(rows, list) or not rows or not all(isinstance(r, list) for r in rows):
+                errors.append(f"route '{slug}': gallery type requires 'rows' (array of arrays)")
+            else:
+                for i, row in enumerate(rows):
+                    for j, cell in enumerate(row):
+                        if not isinstance(cell, dict) or not cell.get("src"):
+                            errors.append(f"route '{slug}': gallery row {i} cell {j} requires 'src'")
         elif rtype == "iframe":
             if not route.get("iframe"):
                 errors.append(f"route '{slug}': iframe type requires 'iframe' URL")
@@ -88,6 +108,11 @@ def validate(data):
         errors.append(f"src/router.js not found at {SRC_ROUTER}")
     if not SRC_TOOLS.exists():
         errors.append(f"src/tools.js not found at {SRC_TOOLS}")
+    for m in data.get("modules", []):
+        if m not in MODULE_FILES:
+            errors.append(f"unknown module '{m}' (available: {', '.join(sorted(MODULE_FILES))})")
+        elif not (BASE / "src" / MODULE_FILES[m]).exists():
+            errors.append(f"module '{m}': src/{MODULE_FILES[m]} not found")
     return errors
 def gen_site_js(site):
     t = site.get("title", "")
@@ -121,6 +146,30 @@ def gen_routes_js(routes):
             parts.append(f'    iframe:"{_jsesc(r.get("iframe",""))}",')
             if r.get("ads") is False:
                 parts.append("    noAd:true,")
+        elif rtype == "gallery":
+            parts.append(f'    title:"{_jsesc(r.get("title",""))}",')
+            if r.get("ads") is False:
+                parts.append("    noAd:true,")
+            parts.append("    render(){")
+            rows = r.get("rows", [])
+            row_parts = []
+            for row in rows:
+                cells = ",".join(
+                    '{src:"%s",title:"%s"}' % (_jsesc(c.get("src", "")), _jsesc(c.get("title", "")))
+                    for c in row
+                )
+                row_parts.append("[%s]" % cells)
+            parts.append("      var grid=[%s];" % ",".join(row_parts))
+            parts.append("      grid.forEach(function(row){")
+            parts.append("        row.forEach(function(col){")
+            parts.append('          var artimg=document.createElement("img");')
+            parts.append("          artimg.src=col.src;")
+            parts.append('          artimg.style="width:"+(main.offsetWidth/row.length)+"px;cursor:pointer";')
+            parts.append("          artimg.onclick=function(){zoomimg(col);};")
+            parts.append("          main.appendChild(artimg);")
+            parts.append("        });")
+            parts.append("      });")
+            parts.append("    },")
         elif rtype == "404":
             parts.append("    is404:true,")
             body = _jsesc(r.get("body", ""))
@@ -202,7 +251,7 @@ def gen_ads_js(ads):
     return "\n".join(parts)
 
 
-def assemble_html(data, utils_js, router_js, tools_js, site_js, routes_js, nav_js, ads_js, css=""):
+def assemble_html(data, utils_js, router_js, tools_js, site_js, routes_js, nav_js, ads_js, css="", module_js=""):
     meta = data.get("meta", {})
     layout = data.get("layout", {})
     meta_tags = ""
@@ -223,7 +272,7 @@ def assemble_html(data, utils_js, router_js, tools_js, site_js, routes_js, nav_j
     ni = _htmlesc(layout.get("nav_img", "assets/nav.webp"))
     fh = layout.get("footer_html", "")
 
-    script_js = f"{utils_js}\n{ads_js}\n{site_js}\n{routes_js}\n{nav_js}\n{tools_js}\n{router_js}"
+    script_js = f"{utils_js}\n{ads_js}\n{site_js}\n{routes_js}\n{nav_js}\n{tools_js}\n{module_js}{router_js}"
 
     return (
         f'{LT}!DOCTYPE html{GT}\n'
@@ -419,8 +468,13 @@ def main():
     routes_js = minify_js(gen_routes_js(data.get("routes", {})))
     nav_js = minify_js(gen_nav_js(data.get("nav", [])))
     ads_js = minify_js(gen_ads_js(data.get("ads", [])))
+    module_js = "\n".join(
+        (BASE / "src" / MODULE_FILES[m]).read_text(encoding="utf-8")
+        for m in data.get("modules", [])
+        if m in MODULE_FILES
+    )
 
-    html = assemble_html(data, utils_js, router_js, tools_js, site_js, routes_js, nav_js, ads_js, css)
+    html = assemble_html(data, utils_js, router_js, tools_js, site_js, routes_js, nav_js, ads_js, css, module_js)
     html = conservative_strip(html)
 
     size = write_output(html, OUT_PATH)

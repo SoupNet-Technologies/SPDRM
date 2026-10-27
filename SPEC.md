@@ -32,15 +32,22 @@ as its own content.
 2. `validate()` enforces required fields (`site.title`, `url`, `lastmod`,
    `meta.description`, non-empty `routes`, `nav`) and per-route invariants. Route
    types: `content` (requires `title` + `cards` array), `iframe` (requires `iframe`
-   URL), `404` (requires `body`), `abyss`, `interactive` (requires `title` + `html`).
-   Optional per-route `ads` must be boolean. Nav slugs must reference existing
-   routes. Any error aborts the build with a full list.
+   URL), `404` (requires `body`), `abyss`, `interactive` (requires `title` + `html`),
+   `gallery` (requires `title` + `rows`, an array of arrays of `{src, title}`).
+   Optional per-route `ads` must be boolean. Optional top-level `modules` list
+   selects opt-in runtime modules (see MODULE_FILES in build.py). Nav slugs must
+   reference existing routes. Any error aborts the build with a full list.
 3. Minify CSS/JS from `spdrm/src/` (`minify_css`, `minify_js`, `conservative_strip`),
    a conservative string-state-machine pass, no external minifier.
 4. `assemble_html()` emits the document: meta tags, inlined `<style>`, layout images,
    and one script bundle in fixed order: utils → ads → site → routes → nav → tools →
-   router. Routes and nav are generated as JS from the JSON (`gen_routes_js`,
-   `gen_nav_js`); strings are escaped by `_jsesc`.
+   modules → router. Routes and nav are generated as JS from the JSON
+   (`gen_routes_js`, `gen_nav_js`); strings are escaped by `_jsesc`. Modules listed
+   in site_data's `modules` key are injected VERBATIM at the modules slot — NOT
+   minified, because the conservative minifier mangles regex literals (a `//`
+   inside a `/regex/` reads as a comment start; this bit the recovered highlight
+   module and node_check caught it). The deployed sites loaded modules as separate
+   unminified files too, so this is parity, not a regression.
 5. Outputs: `index.html` (previous build backed up to `index.html.bak` via
    `shutil.copy2`), `manifest.json` (`gen_manifest`), `sitemap.xml` (`gen_sitemap`;
    `interactive` routes are excluded unless a route opts in with `sitemap: true`).
@@ -103,11 +110,12 @@ zip of the built site to tag releases.
 
 ## Testing
 
-- `tests/` (pytest, 42 tests): validation invariants for every route type and nav
-  slug rule, minifier string/comment survival cases, script bundle order, meta and
-  layout assembly, manifest/sitemap generation including the interactive-route
-  opt-in, the `.bak` backup behavior, GUI parse/import smoke, and an end-to-end
-  validation of the repo's own demo data.
+- `tests/` (pytest, 48 tests): validation invariants for every route type (including
+  gallery cells and module selection), nav slug rule, minifier string/comment
+  survival cases, script bundle order (utils before router, modules between tools
+  and router), meta and layout assembly, manifest/sitemap generation including the
+  interactive-route opt-in, the `.bak` backup behavior, GUI parse/import smoke, and
+  an end-to-end validation of the repo's own demo data.
 - `node_check()` post-build syntax pass (runs in CI).
 - No browser test suite yet; the demo routes are verified manually on release.
 
@@ -139,7 +147,8 @@ spdrm/build.py              builder CLI
 spdrm/gui_editor.py         Tkinter JSON editor
 spdrm/site_data.json        content source (sole source of truth)
 spdrm/SITE_DATA_REFERENCE.md  data model documentation
-spdrm/src/                  style.css, utils.js, router.js, tools.js (build inputs)
+spdrm/src/                  style.css, utils.js, router.js, tools.js, synth.js (build inputs; synth is opt-in via "modules")
+sudoku/                     standalone game, iframe-routed by the demo (outside the build pipeline)
 tests/                      pytest suite
 tools/prose_lint.py         prose style checker used on the docs (CI job: docs)
 docs/deploying.md           hosting recipes (CF Pages, GH Pages, Apache, nginx)

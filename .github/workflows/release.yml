@@ -19,6 +19,7 @@ jobs:
           mkdir -p dist
           cp index.html manifest.json sitemap.xml 403.html 404.html 500.html dist/
           cp -r assets dist/assets
+          cp -r sudoku dist/sudoku
       - name: zip
         run: |
           cd dist && zip -r ../spdrm-${{ github.ref_name }}.zip . && cd ..

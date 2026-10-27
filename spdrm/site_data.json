@@ -24,6 +24,12 @@
     "icon": "assets/icon.png",
     "icon_sizes": "512x512"
   },
+  "modules": ["synth", "cards", "carousel", "highlight", "label"],
+  "ads": [
+    { "src": "assets/ads/ad1.svg", "url": "https://github.com/SoupNet-Technologies/SPDRM" },
+    { "src": "assets/ads/ad2.svg", "url": "" },
+    { "src": "assets/ads/ad3.svg", "url": "" }
+  ],
   "routes": {
     "home": {
       "type": "content",
@@ -35,7 +41,7 @@
       "cards": [
         {
           "title": "hi, welcome to the demo",
-          "body": "Everything you're looking at right now came out of a single <code>site_data.json</code> file and got compiled into one self-contained <code>index.html</code> by a ~450-line Python script with zero dependencies. No node_modules. No bundler. No framework. There is no build step you need to fear.<br><br>Click around. The nav on the right, the routes, the little tools — all of it is data."
+          "body": "Everything you're looking at right now came out of a single <code>site_data.json</code> file and got compiled into one self-contained <code>index.html</code> by a ~450-line Python script with zero dependencies. No node_modules. No bundler. No framework. There is no build step you need to fear.<br><br>Click around. The nav on the right, the routes, the little tools, the gallery, the synth — all of it is data."
         },
         {
           "title": "the pitch",
@@ -43,7 +49,7 @@
         },
         {
           "title": "what to poke at",
-          "body": "The <b>Tools</b> section has interactive routes (palindrome checker, pig latin, a frame-rate converter) — those are just HTML strings in the JSON with an optional <code>onload</code> hook. The <b>Abyss</b> link is a route type, not a joke. Well. Both."
+          "body": "The <b>Tools</b> section has interactive routes (palindrome checker, pig latin, a frame-rate converter) — those are just HTML strings in the JSON with an optional <code>onload</code> hook. The <b>Gallery</b> is a route type. The <b>Synth</b> is an optional module. The <b>Abyss</b> is a route type, not a joke. Well. Both."
         }
       ]
     },
@@ -62,6 +68,111 @@
           "title": "honest limitations",
           "body": "Routing is hash-based (<code>#about</code>) and uses <code>location.replace</code>, so the back button leaves the site instead of walking your route history — that's deliberate for now, and a History API router is on the roadmap for v0.2. SEO meta is set client-side after render. The minifier is a conservative regex pass, not a real one. All of this is in the SPEC, in writing, where it can't be denied."
         }
+      ]
+    },
+    "overview": {
+      "type": "content",
+      "ads": false,
+      "title": "Overview",
+      "meta": ["Overview", "What SPDRM is, in two cards.", ""],
+      "sitemap": true,
+      "cards": [
+        {
+          "title": "What is SPDRM?",
+          "body": "SPDRM (Single Page Dynamic Response Model) is a lightweight framework for creating single-page sites using vanilla JavaScript. No build tools, no dependencies — just HTML, CSS, and JS. A stdlib-Python builder turns your content into one self-contained page."
+        },
+        {
+          "title": "Quick Facts",
+          "body": "<b>Language:</b> Vanilla JavaScript (ES6+)<br><b>Builder:</b> Python 3, stdlib only<br><b>Dependencies:</b> Zero<br><b>Server requirements:</b> None (static files only)<br><b>Routing:</b> Hash-based declarative route objects<br><b>Rendering:</b> Dynamic DOM manipulation via utility functions"
+        }
+      ]
+    },
+    "getting-started": {
+      "type": "content",
+      "ads": false,
+      "title": "Getting Started",
+      "meta": ["Getting Started", "How to set up and run an SPDRM application.", ""],
+      "sitemap": true,
+      "cards": [
+        {
+          "title": "Setup",
+          "body": "Clone the repo and build: <code>python3 spdrm/build.py</code>, then serve the root with any static file server (<code>python3 -m http.server 8000</code>). No package install, no bundler, no server requirements. The builder validates the entire site and writes <code>index.html</code>, <code>manifest.json</code>, and <code>sitemap.xml</code>."
+        },
+        {
+          "title": "File Structure",
+          "body": "The moving parts:<br><br><code>spdrm/build.py</code> — the builder (validate, minify, assemble)<br><code>spdrm/site_data.json</code> — your whole site: routes, nav, meta, layout<br><code>spdrm/src/</code> — the runtime: router.js, utils.js, tools.js, style.css (+ optional modules)<br><code>index.html</code> — generated, never hand-edit<br><br>Editing content means editing the JSON (or using the Tkinter editor, <code>spdrm/gui_editor.py</code>) and rebuilding."
+        },
+        {
+          "title": "Deploying",
+          "body": "The output is static files, so any host works: Cloudflare Pages, GitHub Pages, Apache, nginx, a Raspberry Pi on a shelf. Hash routing means no server rewrites anywhere. Full recipes are in <code>docs/deploying.md</code>."
+        }
+      ]
+    },
+    "architecture": {
+      "type": "content",
+      "ads": false,
+      "title": "Architecture",
+      "meta": ["Architecture", "The declarative routing model behind SPDRM.", ""],
+      "sitemap": true,
+      "cards": [
+        {
+          "title": "Concept",
+          "body": "SPDRM is a declarative routing model. Instead of routing logic scattered across switch statements or external libraries, each page or view is defined as an entry in a <code>routes</code> object with properties that tell the router how to render it."
+        },
+        {
+          "title": "Route types",
+          "body": "In <code>site_data.json</code>, every route has a <code>type</code>:<br><br><b><code>content</code></b> — title + cards (the card is the one UI primitive everything is made of)<br><b><code>interactive</code></b> — raw HTML plus an optional <code>onload</code> hook (the tools use this)<br><b><code>gallery</code></b> — rows of {src, title} images, click one to zoom it in the modal<br><b><code>iframe</code></b> — embeds a URL<br><b><code>abyss</code></b> — full-screen canvas RGB noise. It is what it sounds like.<br><b><code>404</code></b> — error body, auto-redirects home"
+        },
+        {
+          "title": "Route Properties",
+          "body": "At runtime the router (<code>move()</code>) inspects the route's properties to determine how to render it:<br><br><b><code>title</code></b> — Sets a page heading via <code>initmain(title)</code><br><b><code>render()</code></b> — Function that populates content (usually calling <code>createCard()</code>)<br><b><code>iframe</code></b> — URL for an embedded iframe; if present, <code>title</code>/<code>render</code> are skipped<br><b><code>bgImage</code></b> — URL for a full-page background image with CSS blend-mode<br><b><code>is404</code></b> — Flag for 404/redirect routes<br><b><code>isAbyss</code></b> — Flag for canvas noise generator routes<br><b><code>meta</code></b> — Array of <code>[title, description, keywords]</code> for SEO"
+        },
+        {
+          "title": "Dispatcher Logic",
+          "body": "The router checks route properties in priority order:<br><br>1. If <code>is404</code> — render error, update URL, load meta, return<br>2. If <code>isAbyss</code> — clear content, run <code>randimg()</code>, update URL, load meta, return<br>3. If <code>iframe</code> — embed the iframe, update URL, load meta, return<br>4. If <code>title</code> — initialize the page heading<br>5. If <code>bgImage</code> — set background image on main<br>6. If <code>render</code> — call the render function<br>7. Always — generate a random ad (renders nothing if the ads array is empty), update URL hash, load SEO meta"
+        },
+        {
+          "title": "Content Lifecycle",
+          "body": "When a route is activated, the content area is cleared and rebuilt in this sequence:<br><br><code>initmain(title)</code> → <code>bgImage</code> → <code>route.render()</code> → <code>generateAd()</code> → <code>moveurl(s)</code> → <code>loadmeta()</code>"
+        }
+      ]
+    },
+    "api-index": {
+      "type": "content",
+      "ads": false,
+      "title": "API: index.js",
+      "meta": ["API: index.js", "Core SPDRM functions: routes, move, loadnav, moveurl, loadmeta.", ""],
+      "sitemap": true,
+      "cards": [
+        { "title": "<code>siteData</code>", "body": "Global configuration object with <code>title</code>, <code>seotitle</code> (appended to document titles), and <code>tagline</code>." },
+        { "title": "<code>routes</code>", "body": "The central routing table. Each key is a URL slug, and each value is a route config object. The router looks up <code>routes[s]</code> and falls back to <code>routes.home</code> if the key doesn't exist. Properties: <code>title</code>, <code>render()</code>, <code>iframe</code>, <code>bgImage</code>, <code>is404</code>, <code>isAbyss</code>, <code>meta</code>." },
+        { "title": "<code>move(s)</code>", "body": "Main router. Accepts a route key string, looks it up in <code>routes</code>, dispatches by property inspection (iframe, is404, isAbyss, title, bgImage, render), updates URL hash, and loads SEO meta." },
+        { "title": "<code>loadnav()</code>", "body": "Builds the sidebar navigation from an array of nav item objects. Each item can have <code>title</code>, <code>click</code>, and nested <code>children</code> (sub-nav items). Rendered as an unordered list." },
+        { "title": "<code>moveurl(s)</code>", "body": "Updates <code>window.location.hash</code> to reflect the current page. Uses <code>window.location.replace</code> so the hash changes without creating extra history entries." },
+        { "title": "<code>loadmeta(title, desc, keywords)</code>", "body": "Updates the page <code>&lt;title&gt;</code> and <code>meta[name=description]</code> and <code>meta[name=keywords]</code> attributes for SEO." },
+        { "title": "<code>window.onload</code>", "body": "Entry point. Reads <code>window.location.hash</code>, strips the <code>#</code>, and calls <code>move(hash)</code>. Falls back to <code>routes.home</code> if the hash is empty or doesn't match any route." }
+      ]
+    },
+    "api-utils": {
+      "type": "content",
+      "ads": false,
+      "title": "API: utils.js",
+      "meta": ["API: utils.js", "DOM helpers: html, createCard, zoomimg, randimg, mandelbrot, and more.", ""],
+      "sitemap": true,
+      "cards": [
+        { "title": "<code>html(strings, ...values)</code>", "body": "Tagged template literal for safe DOM construction. Escapes HTML in string values but allows <code>Node</code> objects to be interpolated directly. Returns a single element or document fragment." },
+        { "title": "<code>initmain(title)</code>", "body": "Clears <code>main</code> and appends a styled heading element with <code>mainhead</code> class and the given title." },
+        { "title": "<code>createCard(title, post, more)</code>", "body": "Creates a styled card component with an optional header, body text (<code>innerHTML</code>), and an optional appended element. Cards are appended to <code>main</code>." },
+        { "title": "<code>generateAd()</code>", "body": "Picks a random ad from the <code>ads</code> array in site_data and appends it to <code>main</code>. Renders nothing when the array is empty. Routes can opt out with <code>ads: false</code>." },
+        { "title": "<code>appendP(parent, text)</code>", "body": "Appends a small superscript-styled paragraph to a given parent element." },
+        { "title": "<code>zoomimg(s)</code>", "body": "Opens an image in a modal <code>&lt;dialog&gt;</code> element (the shakey one). Expects an object with <code>.src</code> and <code>.title</code> — a <code>[src, title]</code> array works too. The gallery route type wires this up for you." },
+        { "title": "<code>generateDialog(title, message)</code>", "body": "Opens a general-purpose modal dialog with a message and close button." },
+        { "title": "<code>randimg()</code>", "body": "Generates a full-size canvas filled with random RGB noise and appends it to <code>main</code>. Used by <code>isAbyss</code> routes." },
+        { "title": "<code>devclick()</code>", "body": "Dev toolbar toggle. Appends utility buttons to the sidebar for debugging: open modal, test API." },
+        { "title": "<code>isValidEmail(email)</code>", "body": "Returns <code>true</code>/<code>false</code> based on RFC-compatible email regex validation." },
+        { "title": "<code>maybeAnimate()</code>", "body": "Randomly triggers a blur animation on elements with class <code>.blurry-vision</code> (50% chance). Pair it with the <code>shakey</code> dialog class for the full house style." },
+        { "title": "<code>createMandelbrotSVG(width, height, element, arr)</code>", "body": "Generates an interactive SVG Mandelbrot set renderer, drawing pixel-by-pixel into the given element. Iterations and scale are controlled via the <code>arr</code> parameter." },
+        { "title": "<code>calculateMandelbrotValue(x, y, w, h, arr)</code>", "body": "Core Mandelbrot iteration function. Returns the iteration count at which the point escapes the set, used by <code>createMandelbrotSVG</code> for coloring." }
       ]
     },
     "tools": {
@@ -95,6 +206,48 @@
       "html": "<p><sup>frames &lt;-&gt; seconds &lt;-&gt; fps</sup></p>",
       "onload": "loadkf()"
     },
+    "gallery": {
+      "type": "gallery",
+      "ads": false,
+      "title": "Gallery",
+      "meta": ["Gallery", "", ""],
+      "rows": [
+        [
+          { "src": "assets/art/dawn.svg", "title": "Dawn Grid" },
+          { "src": "assets/art/bloom.svg", "title": "Static Bloom" }
+        ],
+        [
+          { "src": "assets/art/deepfield.svg", "title": "Deep Field" },
+          { "src": "assets/art/signal.svg", "title": "Signal" }
+        ],
+        [
+          { "src": "assets/art/deepfield.svg", "title": "Deep Field (rows can differ)" },
+          { "src": "assets/art/dawn.svg", "title": "Dawn Grid" },
+          { "src": "assets/art/bloom.svg", "title": "Static Bloom" }
+        ]
+      ]
+    },
+    "synth": {
+      "type": "interactive",
+      "title": "Synth",
+      "ads": false,
+      "meta": ["Synth", "A WebAudio synthesizer, shipped as an optional SPDRM module.", ""],
+      "html": "<p><sup>optional module — load it with <code>\"modules\": [\"synth\"]</code> in site_data.json</sup></p>",
+      "onload": "loadsynth()"
+    },
+    "components": {
+      "type": "interactive",
+      "title": "Components",
+      "ads": false,
+      "meta": ["Components", "The recovered module components: fancy cards, labels, carousel, syntax highlighting.", ""],
+      "html": "<p><sup>recovered from the 2025 spdrm.com deployment, rebuilt as opt-in modules</sup></p><pre><code class=\"language-js\">createCard.fancy(\"title\", \"post\");\ncreateLabel(\"a label\", \"1.2rem\");\ncreateCard.carousel(\"\", \"\", [{src: \"assets/art/dawn.svg\", title: \"Dawn\"}]);\nhighlight(\"js\");</code></pre>",
+      "onload": "createLabel(\"fancy card\"); createCard.fancy(\"A fancy card\", \"Same card, different wallpaper. The <code>.fancy</code> variant trades the plain background for a pattern.\"); createLabel(\"carousel\"); createCard.carousel(\"\", \"Swipe or scroll sideways — click an image to zoom it in the modal.\", [{src: \"assets/art/dawn.svg\", title: \"Dawn Grid\"}, {src: \"assets/art/bloom.svg\", title: \"Static Bloom\"}, {src: \"assets/art/deepfield.svg\", title: \"Deep Field\"}, {src: \"assets/art/signal.svg\", title: \"Signal\"}]); createLabel(\"syntax highlighting\"); highlight(\"js\");"
+    },
+    "sudoku": {
+      "type": "iframe",
+      "iframe": "sudoku/",
+      "meta": ["Sudoku", "", ""]
+    },
     "abyss": {
       "type": "abyss",
       "meta": ["The Abyss", "", ""]
@@ -102,7 +255,7 @@
     "notfound": {
       "type": "404",
       "meta": ["Lost", "", ""],
-      "body": "This page does not exist. Taking you home..."
+      "body": "<h2>Nothing Here</h2><p class='shakey blurry-vision animating'>Nothing to be seen. The link is wrong. Nothing is waiting for you here. Perhaps you were sent a link that has since changed. Perhaps you were typing words into your browser. Try again later.</p>"
     }
   },
   "nav": [
@@ -111,7 +264,18 @@
       "slug": "home",
       "children": [
         { "label": "About", "slug": "about" },
+        { "label": "Overview", "slug": "overview" },
         { "label": "Abyss", "slug": "abyss" }
+      ]
+    },
+    {
+      "label": "Docs",
+      "slug": "getting-started",
+      "children": [
+        { "label": "Getting Started", "slug": "getting-started" },
+        { "label": "Architecture", "slug": "architecture" },
+        { "label": "API: index.js", "slug": "api-index" },
+        { "label": "API: utils.js", "slug": "api-utils" }
       ]
     },
     {
@@ -122,6 +286,10 @@
         { "label": "Pig Latin", "slug": "piglatin" },
         { "label": "Keyframer", "slug": "keyframer" }
       ]
-    }
+    },
+    { "label": "Gallery", "slug": "gallery" },
+    { "label": "Components", "slug": "components" },
+    { "label": "Synth", "slug": "synth" },
+    { "label": "Sudoku", "slug": "sudoku" }
   ]
 }
