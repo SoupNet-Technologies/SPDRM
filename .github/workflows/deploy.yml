@@ -1,0 +1,30 @@
+name: Deploy demo
+
+# Deploys the demo site (this repo's own content) to Cloudflare Pages.
+# Project: spdrm — live at https://spdrm.jessy.boo
+# Requires repo secrets: CLOUDFLARE_API_TOKEN (Pages: Edit), CLOUDFLARE_ACCOUNT_ID
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: stage dist/
+        run: |
+          python3 spdrm/build.py
+          mkdir -p dist
+          cp index.html manifest.json sitemap.xml 403.html 404.html 500.html dist/
+          cp -r assets dist/assets
+      - uses: cloudflare/wrangler-action@9acf94ace14e7dc412b076f2c5c20b8ce93c79cd # v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy dist --project-name=spdrm --branch=main

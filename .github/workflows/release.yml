@@ -1,0 +1,28 @@
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: build
+        run: python3 spdrm/build.py
+      - name: stage dist/
+        run: |
+          mkdir -p dist
+          cp index.html manifest.json sitemap.xml 403.html 404.html 500.html dist/
+          cp -r assets dist/assets
+      - name: zip
+        run: |
+          cd dist && zip -r ../spdrm-${{ github.ref_name }}.zip . && cd ..
+      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          files: spdrm-${{ github.ref_name }}.zip
+          generate_release_notes: true
