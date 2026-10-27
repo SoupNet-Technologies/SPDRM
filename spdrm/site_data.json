@@ -1,0 +1,127 @@
+{
+  "url": "https://spdrm.jessy.boo",
+  "lastmod": "2026-10-27",
+  "site": {
+    "title": "SPDRM",
+    "seo_title": " • SPDRM",
+    "tagline": "the single page dynamic response model"
+  },
+  "meta": {
+    "description": "SPDRM — a zero-dependency single-page site built from one JSON file",
+    "keywords": "spdrm, spa, vanilla js, static site",
+    "author": "SoupNet Technologies",
+    "theme_color": "#5e5aba"
+  },
+  "layout": {
+    "header_img": "assets/header.svg",
+    "nav_img": "assets/nav.svg",
+    "footer_html": "Powered by <a href='https://github.com/SoupNet-Technologies/SPDRM'>SPDRM</a>"
+  },
+  "pwa": {
+    "short_name": "SPDRM",
+    "background_color": "#1e1f26",
+    "theme_color": "#5e5aba",
+    "icon": "assets/icon.png",
+    "icon_sizes": "512x512"
+  },
+  "routes": {
+    "home": {
+      "type": "content",
+      "ads": true,
+      "title": "One JSON file. One HTML file. That's the site.",
+      "meta": ["Welcome", "SPDRM demo site", ""],
+      "sitemap": true,
+      "priority": 1.0,
+      "cards": [
+        {
+          "title": "hi, welcome to the demo",
+          "body": "Everything you're looking at right now came out of a single <code>site_data.json</code> file and got compiled into one self-contained <code>index.html</code> by a ~450-line Python script with zero dependencies. No node_modules. No bundler. No framework. There is no build step you need to fear.<br><br>Click around. The nav on the right, the routes, the little tools — all of it is data."
+        },
+        {
+          "title": "the pitch",
+          "body": "SPDRM started in 2022 as a WordPress replacement: a newspaper layout with a sticky header and footer, independently scrolling regions, and every piece of content living in a variable instead of a page file. The page <em>responds</em> to navigation dynamically — that's the whole \"Dynamic Response Model\" thing.<br><br>It has been quietly serving real sites since. This repo is it, cleaned up and set free."
+        },
+        {
+          "title": "what to poke at",
+          "body": "The <b>Tools</b> section has interactive routes (palindrome checker, pig latin, a frame-rate converter) — those are just HTML strings in the JSON with an optional <code>onload</code> hook. The <b>Abyss</b> link is a route type, not a joke. Well. Both."
+        }
+      ]
+    },
+    "about": {
+      "type": "content",
+      "ads": false,
+      "title": "About",
+      "meta": ["About", "", ""],
+      "sitemap": true,
+      "cards": [
+        {
+          "title": "why it exists",
+          "body": "Because updating a WordPress site meant logging into a dashboard, and updating this site means editing a JSON file and running one command. One of those feels like work. The other feels like publishing.<br><br>The builder validates your whole site before it writes anything — bad route, bad nav slug, missing field, the build dies loudly instead of shipping quietly broken."
+        },
+        {
+          "title": "honest limitations",
+          "body": "Routing is hash-based (<code>#about</code>) and uses <code>location.replace</code>, so the back button leaves the site instead of walking your route history — that's deliberate for now, and a History API router is on the roadmap for v0.2. SEO meta is set client-side after render. The minifier is a conservative regex pass, not a real one. All of this is in the SPEC, in writing, where it can't be denied."
+        }
+      ]
+    },
+    "tools": {
+      "type": "interactive",
+      "title": "Tools",
+      "ads": false,
+      "meta": ["Tools", "", ""],
+      "html": "<p><sup>little machines, assembled from JSON</sup></p>",
+      "onload": "loadtools()"
+    },
+    "palindrome": {
+      "type": "interactive",
+      "title": "Palindrome Checker",
+      "ads": false,
+      "meta": ["Palindromes", "", ""],
+      "html": "<input id='palInput' placeholder='Enter a word or phrase'><button onclick='document.getElementById(\"palOut\").innerText=isPalindrome(document.getElementById(\"palInput\").value)'>Check</button><div id='palOut' style='margin-top:1em;font-size:1.2em'></div>",
+      "onload": "if(!window._palSeeded){window._palSeeded=true;const d=document.createElement('details');d.innerHTML='<summary>need inspiration?</summary>'+paldefaults.map(p=>'&bull; '+p).join('<br>');document.getElementById('main').appendChild(d);}"
+    },
+    "piglatin": {
+      "type": "interactive",
+      "title": "Pig Latin Translator",
+      "ads": false,
+      "meta": ["Pig Latin", "", ""],
+      "html": "<input id='pigInput' placeholder='Enter sentence'><button onclick='document.getElementById(\"pigOut\").innerText=translateToPigLatin(document.getElementById(\"pigInput\").value)'>Translate</button><div id='pigOut' style='margin-top:1em;font-size:1.2em'></div>"
+    },
+    "keyframer": {
+      "type": "interactive",
+      "title": "Keyframer",
+      "ads": false,
+      "meta": ["Keyframer", "", ""],
+      "html": "<p><sup>frames &lt;-&gt; seconds &lt;-&gt; fps</sup></p>",
+      "onload": "loadkf()"
+    },
+    "abyss": {
+      "type": "abyss",
+      "meta": ["The Abyss", "", ""]
+    },
+    "notfound": {
+      "type": "404",
+      "meta": ["Lost", "", ""],
+      "body": "This page does not exist. Taking you home..."
+    }
+  },
+  "nav": [
+    {
+      "label": "Home",
+      "slug": "home",
+      "children": [
+        { "label": "About", "slug": "about" },
+        { "label": "Abyss", "slug": "abyss" }
+      ]
+    },
+    {
+      "label": "Tools",
+      "slug": "tools",
+      "children": [
+        { "label": "Palindromes", "slug": "palindrome" },
+        { "label": "Pig Latin", "slug": "piglatin" },
+        { "label": "Keyframer", "slug": "keyframer" }
+      ]
+    }
+  ]
+}

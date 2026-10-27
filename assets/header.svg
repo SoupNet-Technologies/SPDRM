@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="140" viewBox="0 0 1200 140">
+  <rect width="1200" height="140" fill="#1e1f26"/>
+  <text x="32" y="92" font-family="Georgia, serif" font-size="52" fill="#5e5aba" letter-spacing="6">SPDRM</text>
+  <text x="270" y="88" font-family="Georgia, serif" font-size="20" fill="#888" font-style="italic">single page dynamic response model</text>
+</svg>
