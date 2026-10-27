@@ -110,12 +110,17 @@ zip of the built site to tag releases.
 
 ## Testing
 
-- `tests/` (pytest, 48 tests): validation invariants for every route type (including
+- `tests/` (pytest, 49 tests): validation invariants for every route type (including
   gallery cells and module selection), nav slug rule, minifier string/comment
   survival cases, script bundle order (utils before router, modules between tools
   and router), meta and layout assembly, manifest/sitemap generation including the
-  interactive-route opt-in, the `.bak` backup behavior, GUI parse/import smoke, and
-  an end-to-end validation of the repo's own demo data.
+  interactive-route opt-in, the `.bak` backup behavior, and an end-to-end
+  validation of the repo's own demo data.
+- `tests/test_gui_smoke.py` (6 tests, display-gated — skip on headless CI): the
+  Tkinter editor launches under Tk 9, every route type opens (including gallery),
+  the type dropdown carries all types, type switching preserves/prunes keys,
+  sitemap checkboxes match builder semantics, and gather_all is lossless on an
+  untouched route.
 - `node_check()` post-build syntax pass (runs in CI).
 - No browser test suite yet; the demo routes are verified manually on release.
 

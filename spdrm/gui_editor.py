@@ -21,7 +21,14 @@ class JSONEditor:
         self.text_color = "#e0e0e0"
 
         #self.root.geometry("1000x800")
-        self.root.attributes('-zoomed', True)
+        try:
+            self.root.attributes('-zoomed', True)
+        except tk.TclError:
+            # Tk 9.0 removed -zoomed (Python 3.13+ builds); fall back gracefully
+            try:
+                self.root.state('zoomed')
+            except tk.TclError:
+                pass
         self.root.configure(bg=self.bg_color)
 
         icon_path = BASE_DIR.parent / "assets" / "icon.png"
@@ -203,6 +210,25 @@ class JSONEditor:
             ent.grid(row=i, column=1, sticky=tk.W, padx=5, pady=2)
             self.fields_layout[key] = ent
 
+        # Runtime Modules (list comes from the builder so the two never drift)
+        f = ttk.LabelFrame(self.scrollable_frame, text="Runtime Modules (opt-in, added to the script bundle)")
+        f.pack(fill=tk.X, padx=10, pady=5)
+        self.module_vars = {}
+        for name in self._available_modules():
+            var = tk.BooleanVar(value=name in self.data.get("modules", []))
+            ttk.Checkbutton(f, text=name, variable=var).pack(anchor=tk.W, padx=5, pady=1)
+            self.module_vars[name] = var
+
+    def _available_modules(self):
+        try:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("spdrm_build_modules", BUILD_SCRIPT)
+            m = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(m)
+            return sorted(getattr(m, "MODULE_FILES", {}).keys())
+        except Exception:
+            return []
+
     # MARK: --- Routes Tab ---
     def setup_routes_tab(self):
         paned = ttk.PanedWindow(self.tab_routes, orient=tk.HORIZONTAL)
@@ -236,15 +262,21 @@ class JSONEditor:
         self.load_route_editor(slug)
 
     def load_route_editor(self, slug):
-        if self.current_route_slug:
+        # save on route CHANGE only — same-slug re-entry is the type-switch
+        # rebuild, and saving there would re-write the old type's keys after
+        # on_type_change already pruned them
+        if self.current_route_slug and self.current_route_slug != slug:
             self.save_current_route()
         
         self.current_route_slug = slug
         self.current_card_index = None
+        self.current_row_index = None
+        self.current_cell_index = None
         for child in self.right_route_frame.winfo_children():
             child.destroy()
 
         route = self.data["routes"][slug]
+        self._route_loaded_keys = set(route.keys())
         
         # General Route Fields
         f = ttk.LabelFrame(self.right_route_frame, text=f"Route: {slug}")
@@ -255,9 +287,9 @@ class JSONEditor:
         row = 0
         ttk.Label(f, text="Type").grid(row=row, column=0, sticky=tk.W)
         self.route_type_var = tk.StringVar(value=route.get("type", "content"))
-        cb = ttk.Combobox(f, textvariable=self.route_type_var, values=["content", "iframe", "404", "abyss", "interactive"])
+        cb = ttk.Combobox(f, textvariable=self.route_type_var, values=["content", "iframe", "404", "abyss", "interactive", "gallery"])
         cb.grid(row=row, column=1, sticky=tk.W)
-        cb.bind("<<ComboboxSelected>>", lambda e: self.load_route_editor(slug))
+        cb.bind("<<ComboboxSelected>>", self.on_type_change)
         row += 1
 
         fields = [("Title", "title"), ("Ads", "ads"), ("Sitemap", "sitemap"), ("Priority", "priority"), ("BG Image", "bg_image")]
@@ -270,7 +302,13 @@ class JSONEditor:
             
             ttk.Label(f, text=label).grid(row=row, column=0, sticky=tk.W)
             if key in ("ads", "sitemap"):
-                var = tk.BooleanVar(value=route.get(key, True))
+                # default to the CONSUMER's semantics, not Python truthiness:
+                # the builder excludes interactive routes from the sitemap
+                # unless they opt in
+                default = True
+                if key == "sitemap":
+                    default = rtype != "interactive"
+                var = tk.BooleanVar(value=route.get(key, default))
                 ttk.Checkbutton(f, variable=var).grid(row=row, column=1, sticky=tk.W)
                 self.route_fields[key] = var
             else:
@@ -326,6 +364,39 @@ class JSONEditor:
             self.route_onload_ent.bind("<KeyRelease>", self.check_backticks)
             
             self.check_backticks(None)
+        elif rtype == "gallery":
+            self.setup_gallery_editor(route)
+
+        # the type whose widgets are actually on screen right now — the save
+        # path must read THIS, not the combobox (which may already hold a
+        # not-yet-rebuilt type when the user is mid-switch)
+        self.route_editor_type = rtype
+
+    def on_type_change(self, event):
+        new_type = self.route_type_var.get()
+        old_type = getattr(self, "route_editor_type", new_type)
+        if not self.current_route_slug or new_type == old_type:
+            return
+        slug = self.current_route_slug
+        # save the widgets that are on screen (old type), then swap
+        self.save_current_route()
+        route = self.data["routes"][slug]
+        route["type"] = new_type
+        # prune the old type's specific keys, seed the new type's
+        type_keys = {
+            "content": ["cards"],
+            "iframe": ["iframe"],
+            "404": ["body"],
+            "interactive": ["html", "onload"],
+            "gallery": ["rows"],
+        }
+        for t, keys in type_keys.items():
+            if t != new_type:
+                for k in keys:
+                    route.pop(k, None)
+        for k in type_keys[new_type]:
+            route.setdefault(k, [] if k in ("cards", "rows") else "")
+        self.load_route_editor(slug)
 
     def check_backticks(self, event):
         if not hasattr(self, "route_html_text"): return
@@ -335,6 +406,158 @@ class JSONEditor:
             self.backtick_warn.pack(anchor=tk.W, padx=5)
         else:
             self.backtick_warn.pack_forget()
+
+    # MARK: Gallery Editor
+    def setup_gallery_editor(self, route):
+        f_rows = ttk.LabelFrame(self.right_route_frame, text="Gallery Rows (row length sets column width)")
+        f_rows.pack(fill=tk.BOTH, expand=True, padx=10, pady=5)
+
+        paned = ttk.PanedWindow(f_rows, orient=tk.HORIZONTAL)
+        paned.pack(fill=tk.BOTH, expand=True)
+
+        left = ttk.Frame(paned)
+        paned.add(left, weight=1)
+        self.row_list = tk.Listbox(left, bg=self.secondary_bg, fg=self.fg_color, selectbackground=self.accent_color, borderwidth=0, highlightthickness=0, exportselection=False)
+        self.row_list.pack(fill=tk.BOTH, expand=True)
+        self.row_list.bind("<<ListboxSelect>>", self.on_row_select)
+
+        rbtn_f = ttk.Frame(left)
+        rbtn_f.pack(fill=tk.X)
+        ttk.Button(rbtn_f, text="+ Row", command=self.add_row).pack(side=tk.LEFT)
+        ttk.Button(rbtn_f, text="- Row", command=self.delete_row).pack(side=tk.LEFT)
+
+        right = ttk.Frame(paned)
+        paned.add(right, weight=2)
+
+        ttk.Label(right, text="Images in selected row").pack(anchor=tk.W)
+        self.cell_list = tk.Listbox(right, bg=self.secondary_bg, fg=self.fg_color, selectbackground=self.accent_color, borderwidth=0, highlightthickness=0, exportselection=False, height=8)
+        self.cell_list.pack(fill=tk.BOTH, expand=True)
+        self.cell_list.bind("<<ListboxSelect>>", self.on_cell_select)
+
+        cbtn_f = ttk.Frame(right)
+        cbtn_f.pack(fill=tk.X)
+        ttk.Button(cbtn_f, text="+", width=3, command=self.add_cell).pack(side=tk.LEFT)
+        ttk.Button(cbtn_f, text="-", width=3, command=self.delete_cell).pack(side=tk.LEFT)
+
+        ttk.Label(right, text="Image Src").pack(anchor=tk.W)
+        src_f = ttk.Frame(right)
+        src_f.pack(fill=tk.X, padx=5)
+        self.cell_src_ent = ttk.Entry(src_f)
+        self.cell_src_ent.pack(side=tk.LEFT, fill=tk.X, expand=True)
+        ttk.Button(src_f, text="Browse...", command=self.browse_cell_img).pack(side=tk.LEFT, padx=2)
+
+        ttk.Label(right, text="Image Title").pack(anchor=tk.W)
+        self.cell_title_ent = ttk.Entry(right)
+        self.cell_title_ent.pack(fill=tk.X, padx=5)
+
+        self.current_rows = route.get("rows", [])
+        self.current_row_index = None
+        self.current_cell_index = None
+        self.update_row_list()
+
+    def update_row_list(self):
+        self.row_list.delete(0, tk.END)
+        for i, row in enumerate(self.current_rows):
+            self.row_list.insert(tk.END, f"Row {i+1} ({len(row)} image{'s' if len(row) != 1 else ''})")
+
+    def on_row_select(self, event):
+        self.save_current_cell()
+        selection = self.row_list.curselection()
+        if not selection:
+            return
+        self.current_row_index = selection[0]
+        self.current_cell_index = None
+        self.cell_src_ent.delete(0, tk.END)
+        self.cell_title_ent.delete(0, tk.END)
+        self.update_cell_list()
+
+    def update_cell_list(self):
+        self.cell_list.delete(0, tk.END)
+        if self.current_row_index is None:
+            return
+        row = self.current_rows[self.current_row_index]
+        for i, cell in enumerate(row):
+            title = cell.get("title", "") or cell.get("src", "") or f"Image {i+1}"
+            self.cell_list.insert(tk.END, title)
+
+    def on_cell_select(self, event):
+        self.save_current_cell()
+        selection = self.cell_list.curselection()
+        if not selection or self.current_row_index is None:
+            return
+        self.current_cell_index = selection[0]
+        cell = self.current_rows[self.current_row_index][self.current_cell_index]
+        self.cell_src_ent.delete(0, tk.END)
+        self.cell_src_ent.insert(0, cell.get("src", ""))
+        self.cell_title_ent.delete(0, tk.END)
+        self.cell_title_ent.insert(0, cell.get("title", ""))
+
+    def save_current_cell(self):
+        if (
+            self.current_row_index is None
+            or self.current_cell_index is None
+            or self.current_row_index >= len(self.current_rows)
+        ):
+            return
+        row = self.current_rows[self.current_row_index]
+        if self.current_cell_index >= len(row):
+            return
+        row[self.current_cell_index]["src"] = self.cell_src_ent.get()
+        row[self.current_cell_index]["title"] = self.cell_title_ent.get()
+        self.update_cell_list()
+
+    def add_row(self):
+        self.current_rows.append([])
+        self.update_row_list()
+        self.row_list.selection_clear(0, tk.END)
+        self.row_list.selection_set(len(self.current_rows) - 1)
+        self.on_row_select(None)
+
+    def delete_row(self):
+        selection = self.row_list.curselection()
+        if not selection:
+            return
+        if messagebox.askyesno("Delete", "Delete this row and its images?"):
+            del self.current_rows[selection[0]]
+            self.current_row_index = None
+            self.current_cell_index = None
+            self.cell_src_ent.delete(0, tk.END)
+            self.cell_title_ent.delete(0, tk.END)
+            self.update_row_list()
+            self.cell_list.delete(0, tk.END)
+
+    def add_cell(self):
+        if self.current_row_index is None:
+            messagebox.showinfo("Pick a row", "Select (or add) a row first.")
+            return
+        self.current_rows[self.current_row_index].append({"src": "", "title": ""})
+        self.update_cell_list()
+        self.cell_list.selection_clear(0, tk.END)
+        self.cell_list.selection_set(len(self.current_rows[self.current_row_index]) - 1)
+        self.on_cell_select(None)
+
+    def delete_cell(self):
+        if self.current_row_index is None:
+            return
+        selection = self.cell_list.curselection()
+        if not selection:
+            return
+        del self.current_rows[self.current_row_index][selection[0]]
+        self.current_cell_index = None
+        self.cell_src_ent.delete(0, tk.END)
+        self.cell_title_ent.delete(0, tk.END)
+        self.update_cell_list()
+
+    def browse_cell_img(self):
+        f = filedialog.askopenfilename(initialdir=BASE_DIR.parent / "assets")
+        if f:
+            try:
+                rel = os.path.relpath(f, BASE_DIR.parent)
+                self.cell_src_ent.delete(0, tk.END)
+                self.cell_src_ent.insert(0, rel)
+            except Exception:
+                self.cell_src_ent.delete(0, tk.END)
+                self.cell_src_ent.insert(0, f)
 
     # MARK: Card Editor
     def setup_cards_editor(self, route):
@@ -532,22 +755,40 @@ class JSONEditor:
     def save_current_route(self):
         if not self.current_route_slug: return
         route = self.data["routes"][self.current_route_slug]
+
+        # the combobox may already hold a type whose widgets are not on screen
+        # (mid-switch); the type-specific save must read the widgets that exist
+        on_screen_type = getattr(self, "route_editor_type", self.route_type_var.get())
         route["type"] = self.route_type_var.get()
-        
+
+        loaded = getattr(self, "_route_loaded_keys", set())
+        defaults = {"ads": True, "sitemap": on_screen_type != "interactive"}
         for key, widget in self.route_fields.items():
             if isinstance(widget, tk.BooleanVar):
-                route[key] = widget.get()
+                val = widget.get()
+                if key in defaults and val == defaults[key] and key not in loaded:
+                    route.pop(key, None)  # preserve absence — no ghost keys
+                else:
+                    route[key] = val
             else:
                 val = widget.get()
                 if key == "priority":
+                    if not val and "priority" not in loaded:
+                        route.pop("priority", None)
+                        continue
                     try: route[key] = float(val)
                     except: route[key] = 0.8
+                elif key == "bg_image":
+                    if not val and "bg_image" not in loaded:
+                        route.pop("bg_image", None)
+                    else:
+                        route[key] = val
                 else:
                     route[key] = val
         
         route["meta"] = [ent.get() for ent in self.route_meta_fields]
         
-        rtype = route["type"]
+        rtype = on_screen_type
         if rtype == "content":
             self.save_current_card()
             route["cards"] = self.current_cards
@@ -558,6 +799,9 @@ class JSONEditor:
         elif rtype == "interactive":
             route["html"] = self.route_html_text.get("1.0", tk.END).strip()
             route["onload"] = self.route_onload_ent.get()
+        elif rtype == "gallery":
+            self.save_current_cell()
+            route["rows"] = self.current_rows
 
     # MARK: --- Nav Tab ---
     def setup_nav_tab(self):
@@ -783,7 +1027,12 @@ class JSONEditor:
         for key, ent in self.fields_pwa.items():
             ent.delete(0, tk.END)
             ent.insert(0, str(pwa.get(key, "")))
-            
+
+        # Modules
+        modules = self.data.get("modules", [])
+        for name, var in self.module_vars.items():
+            var.set(name in modules)
+
         # Routes
         self.populate_routes()
         
@@ -830,6 +1079,17 @@ class JSONEditor:
         if "pwa" not in self.data: self.data["pwa"] = {}
         for key, ent in self.fields_pwa.items():
             self.data["pwa"][key] = ent.get()
+
+        if hasattr(self, "module_vars") and self.module_vars:
+            # preserve the original key's order; append newly checked sorted
+            orig = self.data.get("modules", [])
+            kept = [m for m in orig if self.module_vars.get(m) and self.module_vars[m].get()]
+            added = sorted(m for m, v in self.module_vars.items() if v.get() and m not in orig)
+            mods = kept + added
+            if mods:
+                self.data["modules"] = mods
+            else:
+                self.data.pop("modules", None)  # empty = default bundle, no key
 
         self.save_current_route()
         self.save_nav_from_tree()

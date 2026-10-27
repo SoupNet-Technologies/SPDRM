@@ -2,10 +2,7 @@
 
 Runs on machines with a working display (macOS dev machines), skips elsewhere.
 The display probe runs in a subprocess because a broken tkinter build can abort
-the interpreter outright ( Tcl/Tk version mismatch), which pytest cannot catch.
-
-Failures marked xfail document known GUI bugs — flip them to plain asserts when
-the fix lands.
+the interpreter outright (Tcl/Tk version mismatch), which pytest cannot catch.
 """
 import json
 import subprocess
@@ -39,22 +36,16 @@ def editor():
     spec.loader.exec_module(mod)
 
     root = tk.Tk()
-    # gui bug: '-zoomed' was removed in Tk 9.0 — tolerate it so the rest of the
-    # app is reachable (tracked in the launch-crash issue)
-    orig = tk.Tk.attributes
-
-    def safe_attrs(self, *args):
-        try:
-            return orig(self, *args)
-        except tk.TclError:
-            pass
-
-    tk.Tk.attributes = safe_attrs
     root.withdraw()
     ed = mod.JSONEditor(root)
     yield ed
     root.destroy()
-    tk.Tk.attributes = orig
+
+
+def test_launch_works_on_tk9(editor):
+    """Issue #10: '-zoomed' is gone in Tk 9.0 — the editor must launch anyway.
+    No monkeypatch in this fixture: if init raises, this test fails."""
+    assert editor.data
 
 
 def test_all_route_types_open(editor):
@@ -62,7 +53,6 @@ def test_all_route_types_open(editor):
         editor.load_route_editor(slug)
 
 
-@pytest.mark.xfail(reason="GUI bug: gallery (and its rows editor) missing from the type dropdown")
 def test_every_known_type_in_dropdown(editor):
     import tkinter as tk
     from tkinter import ttk
@@ -85,23 +75,69 @@ def test_new_keys_load_without_loss(editor):
     assert len(editor.data["ads"]) == 3
 
 
-@pytest.mark.xfail(reason="GUI bug: type switching reads widgets destroyed by the rebuild (TclError)")
 def test_switch_route_type_does_not_crash(editor):
+    """Issue #11: switching types must not read destroyed widgets."""
     editor.load_route_editor("about")  # content
     editor.route_type_var.set("iframe")
-    editor.load_route_editor("about")  # what the combobox binding runs
+    editor.load_route_editor("about")
+    editor.load_route_editor("sudoku")  # iframe -> content direction
+    editor.route_type_var.set("content")
+    editor.load_route_editor("sudoku")
 
 
-@pytest.mark.xfail(reason="GUI bug: interactive routes default + save sitemap:true; builder excludes them unless sitemap:true")
+def test_type_switch_prunes_old_keys_and_seeds_new(editor):
+    editor.load_route_editor("about")  # content with cards
+    assert editor.data["routes"]["about"]["cards"]
+    editor.route_type_var.set("iframe")
+    editor.on_type_change(None)
+    route = editor.data["routes"]["about"]
+    assert route["type"] == "iframe"
+    assert "cards" not in route, "old type's cards should be pruned on switch"
+    assert route["iframe"] == ""
+    # and back
+    editor.route_type_var.set("content")
+    editor.on_type_change(None)
+    route = editor.data["routes"]["about"]
+    assert route["type"] == "content"
+    assert route["cards"] == []
+    assert "iframe" not in route
+
+
 def test_sitemap_checkbox_matches_builder_semantics(editor):
+    """Issue #12: interactive routes are excluded from the sitemap unless they
+    opt in — the checkbox must default to False for them."""
     editor.load_route_editor("piglatin")  # interactive, no sitemap key
     assert editor.route_fields["sitemap"].get() is False
+    assert "sitemap" not in editor.data["routes"]["piglatin"]
 
 
-@pytest.mark.xfail(reason="GUI bug: gather_all writes keys the data never had (bg_image:'', explicit sitemap/ads)")
 def test_gather_all_is_lossless_on_untouched_route(editor):
     before = json.dumps(editor.data, sort_keys=True)
     editor.load_route_editor("home")
     editor.gather_all()
     after = json.dumps(editor.data, sort_keys=True)
     assert before == after, "gather_all wrote keys the data never had"
+
+
+def test_gallery_rows_editor_round_trip(editor):
+    """Issue #13: gallery routes get a rows editor that round-trips the data."""
+    editor.load_route_editor("gallery")
+    assert hasattr(editor, "row_list") and hasattr(editor, "cell_list")
+    before = json.dumps(editor.data["routes"]["gallery"]["rows"], sort_keys=True)
+    editor.save_current_cell()
+    editor.gather_all()
+    after = json.dumps(editor.data["routes"]["gallery"]["rows"], sort_keys=True)
+    assert before == after
+
+
+def test_modules_ui_round_trip(editor):
+    """Issue #14: modules checkboxes read and write the modules key."""
+    assert set(editor.module_vars) >= {"synth", "cards", "carousel", "highlight", "label"}
+    before = sorted(editor.data["modules"])
+    editor.module_vars["synth"].set(False)
+    editor.gather_all()
+    assert "synth" not in editor.data["modules"]
+    assert "cards" in editor.data["modules"]
+    editor.module_vars["synth"].set(True)
+    editor.gather_all()
+    assert sorted(editor.data["modules"]) == before
