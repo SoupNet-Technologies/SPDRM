@@ -97,7 +97,7 @@ error pages) to any static host. Recipes: `docs/deploying.md`.
 
 CI (`.github/workflows/`): pytest on 3.12/3.13, full build with a 64 KB size budget
 on `index.html`, node syntax check of source and built artifact, markdownlint plus
-the prose style lint on all docs, yamllint on the workflows. `deploy.yml` pushes
+a prose style pass on all docs, yamllint on the workflows. `deploy.yml` pushes
 the built site to Cloudflare Pages (demo: spdrm.jessy.boo). `release.yml` attaches a
 zip of the built site to tag releases.
 
@@ -141,7 +141,7 @@ spdrm/site_data.json        content source (sole source of truth)
 spdrm/SITE_DATA_REFERENCE.md  data model documentation
 spdrm/src/                  style.css, utils.js, router.js, tools.js (build inputs)
 tests/                      pytest suite
-tools/prose_lint.py      prose style lint used on the docs (CI job: docs)
+tools/prose_lint.py         prose style checker used on the docs (CI job: docs)
 docs/deploying.md           hosting recipes (CF Pages, GH Pages, Apache, nginx)
 .github/workflows/          ci.yml, deploy.yml, release.yml
 ```

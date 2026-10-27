@@ -69,9 +69,8 @@ The output is one HTML file. View source and read the entire site.
 ## Status
 
 v0.1. Tested (`pytest`, 40+ tests pinning builder behavior), CI-checked (build, size
-budget, node syntax, markdown lint, an prose style lint on the docs cause a
-machine voice in a framework about human-written sites would be embarrassing), and
-deployed. The demo lives at [spdrm.jessy.boo](https://spdrm.jessy.boo).
+budget, node syntax, markdown and prose style lint), and deployed. The demo lives
+at [spdrm.jessy.boo](https://spdrm.jessy.boo).
 
 Roadmap: History API router, npm packaging (deferred, the files are copy-paste-able
 today), optional modules (synth, sudoku).
