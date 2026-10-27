@@ -43,7 +43,7 @@ as its own content.
    and one script bundle in fixed order: utils → ads → site → routes → nav → tools →
    modules → router. Routes and nav are generated as JS from the JSON
    (`gen_routes_js`, `gen_nav_js`); strings are escaped by `_jsesc`. Modules listed
-   in site_data's `modules` key are injected VERBATIM at the modules slot — NOT
+   in site_data's `modules` key are injected VERBATIM at the modules slot, NOT
    minified, because the conservative minifier mangles regex literals (a `//`
    inside a `/regex/` reads as a comment start; this bit the recovered highlight
    module and node_check caught it). The deployed sites loaded modules as separate
