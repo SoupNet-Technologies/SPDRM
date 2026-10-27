@@ -76,7 +76,7 @@ Roadmap: History API router, npm packaging (deferred, the files are copy-paste-a
 today). The synth is already in as an opt-in module (`"modules": ["synth"]`), and
 the demo carries a gallery route, an iframe-routed sudoku, and the framework docs.
 
-Any dumb static host works too — see `docs/deploying.md`. On macOS and fighting
+Any dumb static host works too: see `docs/deploying.md`. On macOS and fighting
 Python? `docs/python-setup.md` is the survival guide.
 
 ## License
