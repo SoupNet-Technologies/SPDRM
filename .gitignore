@@ -1,7 +1,10 @@
-__pycache__/
-*.pyc
-index.html.bak
-.DS_Store
 *.egg-info/
+*.pyc
+.DS_Store
 .pytest_cache/
 .venv/
+__pycache__/
+index.html
+index.html.bak
+manifest.json
+sitemap.xml

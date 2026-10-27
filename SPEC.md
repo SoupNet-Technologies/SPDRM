@@ -116,7 +116,7 @@ zip of the built site to tag releases.
   and router), meta and layout assembly, manifest/sitemap generation including the
   interactive-route opt-in, the `.bak` backup behavior, and an end-to-end
   validation of the repo's own demo data.
-- `tests/test_gui_smoke.py` (6 tests, display-gated — skip on headless CI): the
+- `tests/test_gui_smoke.py` (6 tests, display-gated, skipped on headless CI): the
   Tkinter editor launches under Tk 9, every route type opens (including gallery),
   the type dropdown carries all types, type switching preserves/prunes keys,
   sitemap checkboxes match builder semantics, and gather_all is lossless on an

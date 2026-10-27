@@ -68,7 +68,7 @@ The output is one HTML file. View source and read the entire site.
 
 ## Status
 
-v0.1. Tested (`pytest`, 40+ tests pinning builder behavior), CI-checked (build, size
+v0.1. Tested (`pytest`, 49 tests pinning builder behavior), CI-checked (build, size
 budget, node syntax, markdown and prose style lint), and deployed. The demo lives
 at [spdrm.jessy.boo](https://spdrm.jessy.boo).
 

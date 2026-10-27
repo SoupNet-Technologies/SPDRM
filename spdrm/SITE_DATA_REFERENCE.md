@@ -1,6 +1,6 @@
 # SPDRM Site Builder — `site_data.json` Reference
 
-This document describes every field in `site_data.json`. This file is the **sole source of content** for the generated SPDRM website. Edit this file, then run `python3 secret666python/build.py` to regenerate `index.html`, `manifest.json`, and `sitemap.xml`.
+This document describes every field in `site_data.json`. This file is the **sole source of content** for the generated SPDRM website. Edit this file, then run `python3 spdrm/build.py` to regenerate `index.html`, `manifest.json`, and `sitemap.xml`.
 
 ---
 
@@ -457,7 +457,7 @@ If any validation fails, the script exits with a non-zero code and prints all er
 2. Edit src/style.css   (optional, visual changes)
 3. Edit src/utils.js    (optional, framework changes)
 4. Edit src/router.js   (optional, routing changes)
-5. Run: python3 secret666python/build.py
+5. Run: python3 spdrm/build.py
 6. Output: index.html, manifest.json, sitemap.xml
 7. Open index.html in browser to verify
 8. If something broke, restore from index.html.bak and fix the JSON
